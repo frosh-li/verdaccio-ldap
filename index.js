@@ -59,10 +59,9 @@ module.exports = Auth;
 //
 Auth.prototype.authenticate = function (username, password, callback) {
 
-  const hash = this.getHashByPasswordOrLogError(username, password);
   if (this._config.cache) {
-    const cached = this._userCache.get(username + hash);
-    if (cached && cached.password && bcrypt.compareSync(password, cached.password)) {
+    const cached = this._userCache.get(username);
+    if (cached && cached.password && password === cached.password) {
       if (cached.error) {
         return callback(null, false);
       }
@@ -95,7 +94,7 @@ Auth.prototype.authenticate = function (username, password, callback) {
     })
     .finally(() => {
       if (this._config.cache) {
-        this._userCache.set(username + hash, { password: hash, user: currentUser, error: currentError });
+        this._userCache.set(username, { password: password, user: currentUser, error: currentError });
       }
       // This will do nothing with Node 10 (https://github.com/joyent/node-ldapjs/issues/483)
       ldapClient.closeAsync()
@@ -110,10 +109,3 @@ Auth.prototype.authenticate = function (username, password, callback) {
   });
 };
 
-Auth.prototype.getHashByPasswordOrLogError = function(username, password) {
-  try {
-    return bcrypt.hashSync(password, this._salt);
-  } catch(err) {
-    this._logger.warn({ username, err }, `verdaccio-ldap bcrypt hash error ${err}`);
-  }
-};
